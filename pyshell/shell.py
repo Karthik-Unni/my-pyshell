@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import sys
 
-from . import completion
+from . import banner, completion
 from .executor import run_pipeline
 from .history import History
 from .jobs import JobTable
@@ -49,6 +49,7 @@ class Shell:
     def run(self) -> int:
         self.history.load()
         completion.install()
+        banner.show()
         try:
             while True:
                 self.jobs.reap_finished()

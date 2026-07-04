@@ -7,6 +7,8 @@ control built on raw `os.fork`/`os.exec`/`os.pipe`.
 
 ## Features
 
+- **Animated startup banner**: a gradient ASCII-art splash on launch
+  (auto-skips when piped/scripted/tested, or via `PYSHELL_NO_BANNER=1`)
 - **REPL** with a `cwd$ ` prompt
 - **Builtins**: `cd`, `pwd`, `echo`, `exit`, `type`, `export`, `unset`,
   `env`, `history`, `jobs`, `fg`, `bg`, `help`
@@ -48,6 +50,7 @@ pyshell/
 ├── jobs.py         # JobTable: track/reap/continue background process groups
 ├── history.py      # History: in-memory list + file persistence
 ├── completion.py   # readline hook for tab completion
+├── banner.py       # animated ASCII-art startup splash
 ├── shell.py        # Shell class: owns state, runs the REPL loop
 └── main.py         # entry point
 ```
