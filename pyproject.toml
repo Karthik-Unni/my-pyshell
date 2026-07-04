@@ -1,0 +1,12 @@
+[project]
+name = "pyshell"
+version = "0.1.0"
+description = "A custom Unix-like shell written in Python"
+requires-python = ">=3.10"
+
+[project.scripts]
+pyshell = "pyshell.main:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
