@@ -1,11 +1,13 @@
 """Turns parsed Commands into running processes.
 
 Design:
-  - Builtins that must mutate the parent shell's own state (cd, exit,
-    export, unset) run in-process when they're the sole stage of a
-    pipeline and the pipeline isn't backgrounded. Everything else -
-    external programs, piped builtins, backgrounded builtins - runs in
-    a forked child so pipe plumbing and job control work uniformly.
+  - A single, non-backgrounded builtin runs in-process (the shell's
+    own process). This is required for state-mutating builtins like
+    cd/export/unset/exit, and it's also what makes output correctly
+    visible whether the shell's stdout is a real fd or a Python
+    object (as in tests). Everything else - external programs, piped
+    builtins, backgrounded commands - runs in a forked child so pipe
+    plumbing and job control work uniformly.
   - Each pipeline gets its own process group so `jobs`/`fg`/`bg` and
     signals (Ctrl-C, Ctrl-Z equivalents) can target the whole pipeline.
 """
@@ -16,10 +18,6 @@ import sys
 
 from .builtins import BUILTINS
 from .parser import Command, Redirections
-
-# Builtins that only make sense running in the shell's own process,
-# because they change the shell's state (cwd, env, or terminate it).
-STATEFUL_BUILTINS = {"cd", "exit", "export", "unset"}
 
 
 def _open_redirections(redirs: Redirections):
@@ -68,28 +66,45 @@ def run_pipeline(commands: list[Command], background: bool, raw_line: str, shell
     if not commands:
         return 0
 
-    # Fast path: a single stateful builtin, run inline in the shell process.
-    if len(commands) == 1 and not background and commands[0].args[0] in STATEFUL_BUILTINS:
+    # Fast path: a single builtin with no pipe and not backgrounded runs
+    # inline, in the shell's own process. Redirection is applied by
+    # temporarily swapping shell.stdout/stderr to a file handle so it
+    # works whether the shell writes to real fds or a Python stream.
+    if len(commands) == 1 and not background and commands[0].args[0] in BUILTINS:
         command = commands[0]
-        stdin_fd, stdout_fd, stderr_fd = _open_redirections(command.redirs)
-        saved = []
+        saved_stdout, saved_stderr = shell.stdout, shell.stderr
+        opened_files = []
         try:
-            if stdout_fd is not None:
-                saved.append((1, os.dup(1)))
-                os.dup2(stdout_fd, 1)
-                os.close(stdout_fd)
-            if stderr_fd is not None:
-                saved.append((2, os.dup(2)))
-                os.dup2(stderr_fd, 2)
-                os.close(stderr_fd)
-            if stdin_fd is not None:
-                os.close(stdin_fd)  # stateful builtins don't read stdin
+            if command.redirs.stdin_path:
+                # Builtins in this shell don't read stdin from a file;
+                # open+close to validate the path and surface errors.
+                fd = os.open(command.redirs.stdin_path, os.O_RDONLY)
+                os.close(fd)
+            if command.redirs.stdout_path:
+                mode = "a" if command.redirs.stdout_append else "w"
+                f = open(command.redirs.stdout_path, mode)
+                opened_files.append(f)
+                shell.stdout = f
+            if command.redirs.stderr_path:
+                mode = "a" if command.redirs.stderr_append else "w"
+                f = open(command.redirs.stderr_path, mode)
+                opened_files.append(f)
+                shell.stderr = f
             fn = BUILTINS[command.args[0]]
             return fn(command.args[1:], shell)
         finally:
-            for fd_num, saved_fd in saved:
-                os.dup2(saved_fd, fd_num)
-                os.close(saved_fd)
+            shell.stdout, shell.stderr = saved_stdout, saved_stderr
+            for f in opened_files:
+                f.close()
+
+    # If it's a single external command, resolve it in the parent first.
+    # This lets "command not found" be reported through shell.stderr
+    # (correct even when shell.stderr is a non-fd Python stream, e.g.
+    # in tests) instead of only ever reaching a real fd 2 in a child.
+    if len(commands) == 1 and commands[0].args[0] not in BUILTINS:
+        if shell.find_executable(commands[0].args[0]) is None:
+            print(f"{commands[0].args[0]}: command not found", file=shell.stderr)
+            return 127
 
     n = len(commands)
     prev_read = None
