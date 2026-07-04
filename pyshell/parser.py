@@ -11,7 +11,22 @@ Responsibilities:
 """
 from __future__ import annotations
 
+import os
+import re
 from dataclasses import dataclass
+
+_VAR_RE = re.compile(r"\$(\{(\w+)\}|(\w+)|\?)")
+
+
+def _expand_vars(text: str) -> str:
+    """Expand $VAR, ${VAR}, and $? using the current environment."""
+    def repl(m: re.Match) -> str:
+        if m.group(0) == "$?":
+            return os.environ.get("?", "0")
+        name = m.group(2) or m.group(3)
+        return os.environ.get(name, "")
+
+    return _VAR_RE.sub(repl, text)
 
 
 class ParseError(Exception):
@@ -77,11 +92,22 @@ def tokenize(line: str) -> list[str]:
         foo"bar baz"qux -> one token: foobar bazqux
     """
     tokens: list[str] = []
+    # A token is built from segments; each segment is either literal
+    # (single-quoted -> never variable-expanded) or expandable
+    # (unquoted / double-quoted -> $VAR gets expanded).
+    segments: list[tuple[str, bool]] = []
     current: list[str] = []
+    expandable = True
     have_token = False
     in_single = in_double = False
     i = 0
     n = len(line)
+
+    def flush_segment():
+        nonlocal current
+        if current:
+            segments.append(("".join(current), expandable))
+            current = []
 
     while i < n:
         c = line[i]
@@ -89,6 +115,8 @@ def tokenize(line: str) -> list[str]:
         if in_single:
             if c == "'":
                 in_single = False
+                flush_segment()
+                expandable = True
             else:
                 current.append(c)
 
@@ -104,16 +132,24 @@ def tokenize(line: str) -> list[str]:
         else:
             if c.isspace():
                 if have_token:
-                    tokens.append("".join(current))
-                    current = []
+                    flush_segment()
+                    tokens.append("".join(
+                        text if not exp else _expand_vars(text)
+                        for text, exp in segments
+                    ))
+                    segments = []
                     have_token = False
                 i += 1
                 continue
             elif c == "'":
+                flush_segment()
                 in_single = True
+                expandable = False
                 have_token = True
             elif c == '"':
+                flush_segment()
                 in_double = True
+                expandable = True
                 have_token = True
             elif c == "\\" and i + 1 < n:
                 current.append(line[i + 1])
@@ -129,7 +165,11 @@ def tokenize(line: str) -> list[str]:
         raise ParseError("unmatched quote")
 
     if have_token:
-        tokens.append("".join(current))
+        flush_segment()
+        tokens.append("".join(
+            text if not exp else _expand_vars(text)
+            for text, exp in segments
+        ))
 
     return tokens
 
