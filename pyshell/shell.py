@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sys
 
+from . import completion
 from .executor import run_pipeline
 from .history import History
 from .jobs import JobTable
@@ -47,6 +48,7 @@ class Shell:
     # -- main loop -----------------------------------------------------
     def run(self) -> int:
         self.history.load()
+        completion.install()
         try:
             while True:
                 self.jobs.reap_finished()
