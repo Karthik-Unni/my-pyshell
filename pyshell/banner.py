@@ -69,7 +69,7 @@ def show(version: str = "0.1.0") -> None:
 
     user = getpass.getuser()
     py_ver = platform.python_version()
-    tagline = f"welcome back, {user} — pyshell v{version} (python {py_ver})"
+    tagline = f"welcome back, BOSS — pyshell v{version} (python {py_ver})"
     if color:
         sys.stdout.write(DIM)
     _type_out(tagline, delay=0.01)
