@@ -1,5 +1,5 @@
 [project]
-name = "pyshell"
+name = "my_pyshell"
 version = "0.1.0"
 description = "A custom Unix-like shell written in Python"
 requires-python = ">=3.10"
