@@ -119,12 +119,6 @@ jobs                     # list active jobs
 fg 1                     # bring job 1 to foreground
 ```
 
-## 🛠️ Development
 
-```bash
-git clone https://github.com/Karthik-Unni/my-pyshell.git
-cd my-pyshell
-pip install -e ".[dev]"
-pytest
 ```
 
