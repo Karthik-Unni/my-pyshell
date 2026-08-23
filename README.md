@@ -111,13 +111,7 @@ echo "log entry" >> app.log
 python script.py < input.txt
 ```
 
-## 🧵 Job Control
 
-```bash
-long_running_task &     # run in background
-jobs                     # list active jobs
-fg 1                     # bring job 1 to foreground
-```
 
 
 
