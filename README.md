@@ -39,7 +39,6 @@ pyshell v0.1.1 — type 'help' to get started
 |---|---|
 | 🎬 **Interactive REPL** | Animated ASCII-art banner with tty-aware fallback, colorized prompts |
 | 🧰 **Built-in Commands** | `cd`, `pwd`, `echo`, `export`, `env`, `help`, `type`, `exit`, and more |
-| ⇥ **Tab Completion** | Autocompletes built-ins, file paths, and environment variables |
 | 🔀 **Pipes & Redirection** | `\|`, `>`, `>>`, `<` — just like bash |
 | 🧵 **Job Control** | Background jobs with `&`, inspect with `jobs`, resume with `fg` |
 | 📜 **Command History** | Persistent across sessions |
