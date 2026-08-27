@@ -63,7 +63,7 @@ pip install -e .
 
 </details>
 
-## ⚡ Quick Start
+## ⚡ Quick Start:
 
 ```bash
 pyshell
